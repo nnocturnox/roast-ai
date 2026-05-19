@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROAST.AI — The World's Most Toxic Art Critic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --green: #00ff41;
+  --red: #ff0040;
+  --amber: #ffb700;
+  --cyan: #00d4ff;
+  --bg: #060608;
+  --bg2: #0e0e12;
+  --bg3: #16161c;
+  --border: rgba(0,255,65,0.18);
+  --text: #9098a0;
+  --font: 'JetBrains Mono', monospace;
+  --glow-green: 0 0 12px #00ff4155, 0 0 24px #00ff4122;
+  --glow-red: 0 0 12px #ff004055, 0 0 24px #ff004022;
+  --glow-amber: 0 0 12px #ffb70055;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Scanlines overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px);
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* CRT vignette */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.5) 100%);
+  pointer-events: none;
+  z-index: 9997;
+}
+
+/* ── ANIMATIONS ── */
+@keyframes glitch-1 {
+  0%,89%,100% { clip-path: none; transform: none; color: var(--green); }
+  90% { clip-path: polygon(0 22%, 100% 22%, 100% 34%, 0 34%); transform: translateX(-5px); color: var(--red); }
+  91% { clip-path: polygon(0 58%, 100% 58%, 100% 68%, 0 68%); transform: translateX(5px); color: var(--cyan); }
+  92% { clip-path: none; transform: translateX(-2px); }
+  93% { clip-path: polygon(0 42%, 100% 42%, 100% 50%, 0 50%); transform: translateX(3px); }
+  94% { clip-path: none; transform: none; color: var(--green); }
+}
+
+@keyframes glitch-2 {
+  0%,89%,100% { clip-path: none; transform: none; opacity: 0.4; }
+  90% { clip-path: polygon(0 22%, 100% 22%, 100% 34%, 0 34%); transform: translateX(5px); }
+  91% { clip-path: polygon(0 58%, 100% 58%, 100% 68%, 0 68%); transform: translateX(-5px); }
+  92% { clip-path: none; transform: translateX(2px); }
+  93% { clip-path: polygon(0 42%, 100% 42%, 100% 50%, 0 50%); transform: translateX(-3px); }
+  94% { clip-path: none; transform: none; }
+}
+
+@keyframes flicker {
+  0%,94%,96%,98%,100% { opacity: 1; }
+  95% { opacity: 0.7; }
+  97% { opacity: 0.5; }
+  99% { opacity: 0.8; }
+}
+
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+
+@keyframes pulse-border {
+  0%,100% { border-color: rgba(0,255,65,0.18); box-shadow: none; }
+  50% { border-color: rgba(0,255,65,0.45); box-shadow: var(--glow-green); }
+}
+
+@keyframes pulse-red {
+  0%,100% { border-color: rgba(255,0,64,0.35); }
+  50% { border-color: rgba(255,0,64,0.8); box-shadow: var(--glow-red); }
+}
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  10%,50%,90% { transform: translateX(-5px); }
+  30%,70% { transform: translateX(5px); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scanDown {
+  0% { top: -20%; }
+  100% { top: 110%; }
+}
+
+/* ── SCREEN SYSTEM ── */
+.screen { display: none; min-height: 100vh; }
+.screen.active { display: flex; flex-direction: column; }
+
+/* ═══════════════════════════════
+   START SCREEN
+═══════════════════════════════ */
+#start-screen {
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  text-align: center;
+  padding: 2rem;
+  animation: fadeIn 0.5s ease;
+}
+
+.logo-wrap { position: relative; display: inline-block; }
+
+.logo {
+  font-size: clamp(3.5rem, 12vw, 7.5rem);
+  font-weight: 800;
+  color: var(--green);
+  letter-spacing: -3px;
+  text-shadow: var(--glow-green);
+  animation: glitch-1 9s infinite, flicker 7s infinite;
+  position: relative;
+  z-index: 1;
+  line-height: 1;
+}
+
+.logo-ghost {
+  position: absolute;
+  inset: 0;
+  font-size: clamp(3.5rem, 12vw, 7.5rem);
+  font-weight: 800;
+  color: var(--red);
+  letter-spacing: -3px;
+  line-height: 1;
+  animation: glitch-2 9s infinite;
+  z-index: 0;
+  user-select: none;
+}
+
+.tagline {
+  font-size: clamp(0.6rem, 2vw, 0.8rem);
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  color: var(--text);
+  opacity: 0.6;
+}
+
+.start-card {
+  max-width: 440px;
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  padding: 1.5rem;
+  text-align: left;
+  animation: pulse-border 5s infinite;
+}
+
+.card-row {
+  display: flex;
+  gap: 0.6rem;
+  font-size: 0.72rem;
+  line-height: 1.9;
+  color: var(--text);
+}
+
+.card-row .ico { color: var(--green); flex-shrink: 0; }
+.card-row .warn { color: var(--amber); }
+.card-row .bad { color: var(--red); }
+
+.card-label {
+  font-size: 0.62rem;
+  letter-spacing: 4px;
+  color: var(--green);
+  font-weight: 700;
+  margin-bottom: 0.8rem;
+  opacity: 0.8;
+}
+
+.card-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.8rem 0;
+}
+
+.btn-start {
+  background: transparent;
+  border: 2px solid var(--green);
+  color: var(--green);
+  font-family: var(--font);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 5px;
+  padding: 1rem 3rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s;
+  box-shadow: var(--glow-green);
+}
+
+.btn-start::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--green);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s;
+  z-index: -1;
+}
+
+.btn-start:hover { color: var(--bg); }
+.btn-start:hover::before { transform: scaleX(1); }
+.btn-start:hover { box-shadow: 0 0 40px #00ff4188; }
+
+.version-tag {
+  font-size: 0.6rem;
+  letter-spacing: 3px;
+  opacity: 0.25;
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════
+   GAME SCREEN
+═══════════════════════════════ */
+#game-screen {
+  padding: 0.75rem 1rem;
+  gap: 0.75rem;
+  max-width: 1300px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+#game-screen.active { display: flex; }
+
+.game-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.75rem;
+}
+
+.h-logo {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--green);
+  text-shadow: var(--glow-green);
+  white-space: nowrap;
+}
+
+.word-center {
+  text-align: center;
+}
+
+.word-label-sm {
+  font-size: 0.58rem;
+  letter-spacing: 4px;
+  color: var(--text);
+  opacity: 0.5;
+  text-transform: uppercase;
+}
+
+#word-display {
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  animation: fadeIn 0.3s ease;
+}
+
+.timer-box {
+  text-align: right;
+}
+
+.timer-label-sm {
+  font-size: 0.58rem;
+  letter-spacing: 4px;
+  color: var(--text);
+  opacity: 0.5;
+  text-transform: uppercase;
+}
+
+#timer {
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  font-weight: 800;
+  color: var(--green);
+  text-shadow: var(--glow-green);
+  font-variant-numeric: tabular-nums;
+  transition: color 0.3s, text-shadow 0.3s;
+}
+
+#timer.warn { color: var(--amber); text-shadow: var(--glow-amber); }
+#timer.danger { color: var(--red); text-shadow: var(--glow-red); animation: flicker 0.4s infinite; }
+
+/* Timer bar */
+.timer-bar-wrap {
+  height: 2px;
+  background: var(--bg3);
+  border-radius: 0;
+  overflow: hidden;
+}
+
+#timer-bar {
+  height: 100%;
+  background: var(--green);
+  width: 100%;
+  transition: width 1s linear, background 0.5s;
+}
+
+/* Main game layout */
+.game-main {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 0.75rem;
+  flex: 1;
+  min-height: 0;
+}
+
+@media (max-width: 700px) {
+  .game-main { grid-template-columns: 1fr; }
+  .game-header { grid-template-columns: auto auto auto; }
+  .h-logo { display: none; }
+}
+
+/* Canvas section */
+.canvas-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.canvas-wrap {
+  flex: 1;
+  min-height: 380px;
+  max-height: 520px;
+  border: 1px solid var(--border);
+  background: #f2ede6;
+  position: relative;
+  overflow: hidden;
+  animation: pulse-border 5s infinite;
+}
+
+#main-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+/* Canvas overlay hint */
+.canvas-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0.12;
+  font-size: 0.7rem;
+  letter-spacing: 4px;
+  color: #555;
+  transition: opacity 0.5s;
+}
+
+.canvas-hint.hidden { opacity: 0; }
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.t-btn {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 0.65rem;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.t-btn:hover { border-color: rgba(0,255,65,0.5); color: var(--green); }
+.t-btn.on { border-color: var(--green); color: var(--green); background: rgba(0,255,65,0.07); }
+
+.size-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.62rem;
+  color: var(--text);
+  opacity: 0.6;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 70px;
+  height: 2px;
+  background: var(--border);
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 11px;
+  height: 11px;
+  background: var(--green);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: var(--glow-green);
+}
+
+.btn-clear {
+  background: transparent;
+  border: 1px solid rgba(255,0,64,0.3);
+  color: var(--red);
+  font-family: var(--font);
+  font-size: 0.65rem;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+}
+
+.btn-clear:hover { background: rgba(255,0,64,0.1); border-color: var(--red); }
+
+.btn-done {
+  margin-left: auto;
+  background: var(--green);
+  border: none;
+  color: var(--bg);
+  font-family: var(--font);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.4rem 1.2rem;
+  cursor: pointer;
+  letter-spacing: 3px;
+  transition: all 0.2s;
+}
+
+.btn-done:hover { background: #00ee3a; box-shadow: var(--glow-green); }
+
+/* AI Terminal Panel */
+.ai-panel {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  overflow: hidden;
+}
+
+.panel-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.dot-r { background: #ff5f57; }
+.dot-y { background: #febc2e; }
+.dot-g { background: #28c840; }
+
+.panel-title {
+  font-size: 0.58rem;
+  letter-spacing: 2px;
+  color: var(--text);
+  opacity: 0.45;
+  margin-left: 0.2rem;
+  flex: 1;
+}
+
+.panel-status {
+  font-size: 0.55rem;
+  color: var(--green);
+  opacity: 0.7;
+  animation: blink 2s infinite;
+}
+
+.terminal-out {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 200px;
+}
+
+.terminal-out::-webkit-scrollbar { width: 3px; }
+.terminal-out::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.t-line {
+  font-size: 0.7rem;
+  line-height: 1.7;
+  animation: slideUp 0.3s ease;
+  display: block;
+}
+
+.t-line.sys { color: var(--text); opacity: 0.4; }
+.t-line.info { color: var(--cyan); }
+.t-line.roast { color: var(--amber); }
+.t-line.err { color: var(--red); font-weight: 700; }
+.t-line.ok { color: var(--green); }
+.t-line.prompt::before { content: '▸ '; color: var(--green); opacity: 0.8; }
+
+.cursor-block {
+  display: inline-block;
+  width: 7px;
+  height: 12px;
+  background: var(--green);
+  animation: blink 1s step-end infinite;
+  vertical-align: middle;
+  margin-left: 2px;
+}
+
+/* Confidence widget */
+.confidence-widget {
+  padding: 0.7rem 0.75rem;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.cw-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.4rem;
+}
+
+.cw-label {
+  font-size: 0.58rem;
+  letter-spacing: 3px;
+  color: var(--text);
+  opacity: 0.5;
+  text-transform: uppercase;
+}
+
+#conf-pct {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--red);
+  text-shadow: var(--glow-red);
+}
+
+.conf-track {
+  height: 3px;
+  background: var(--bg3);
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+#conf-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--red), var(--amber));
+  transition: width 0.6s ease;
+  width: 0%;
+}
+
+.guess-row {
+  font-size: 0.65rem;
+  color: var(--text);
+  opacity: 0.7;
+}
+
+.guess-row span { color: var(--amber); font-weight: 700; }
+
+/* ═══════════════════════════════
+   RESULT SCREEN
+═══════════════════════════════ */
+#result-screen {
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  animation: fadeIn 0.6s ease;
+}
+
+#result-title {
+  font-size: clamp(1.4rem, 6vw, 3rem);
+  font-weight: 800;
+  color: var(--red);
+  text-shadow: var(--glow-red);
+  letter-spacing: 2px;
+  animation: shake 0.5s ease;
+}
+
+#result-word-sub {
+  font-size: 0.72rem;
+  letter-spacing: 3px;
+  color: var(--text);
+  opacity: 0.6;
+  text-transform: uppercase;
+}
+
+.result-evidence {
+  position: relative;
+  display: inline-block;
+  border: 2px solid var(--red);
+  box-shadow: var(--glow-red);
+  animation: pulse-red 3s infinite;
+}
+
+.evidence-tag {
+  position: absolute;
+  top: -11px;
+  right: 8px;
+  background: var(--red);
+  color: var(--bg);
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  padding: 2px 7px;
+}
+
+#result-canvas {
+  display: block;
+  max-width: min(380px, 90vw);
+  height: auto;
+}
+
+.verdict-card {
+  max-width: 520px;
+  width: 100%;
+  background: var(--bg2);
+  border: 1px solid rgba(255,183,0,0.25);
+  padding: 1.5rem;
+  text-align: left;
+  position: relative;
+}
+
+.verdict-card::before {
+  content: '"';
+  position: absolute;
+  top: -0.5rem;
+  left: 1rem;
+  font-size: 3rem;
+  color: var(--amber);
+  opacity: 0.3;
+  line-height: 1;
+}
+
+.vcard-label {
+  font-size: 0.58rem;
+  letter-spacing: 4px;
+  color: var(--amber);
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+  opacity: 0.8;
+}
+
+#final-verdict {
+  font-size: 0.85rem;
+  line-height: 1.85;
+  color: #e0e0e0;
+  font-style: italic;
+}
+
+.vcard-stats {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.6rem;
+  color: var(--text);
+  opacity: 0.45;
+  letter-spacing: 1px;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.stat-item span { color: var(--amber); }
+
+.result-btns {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btn-share, .btn-again {
+  background: transparent;
+  font-family: var(--font);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 4px;
+  padding: 0.8rem 2rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+
+.btn-share {
+  border: 2px solid var(--amber);
+  color: var(--amber);
+}
+.btn-share:hover { background: var(--amber); color: var(--bg); }
+
+.btn-again {
+  border: 2px solid var(--green);
+  color: var(--green);
+}
+.btn-again:hover { background: var(--green); color: var(--bg); box-shadow: var(--glow-green); }
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--green);
+  color: var(--bg);
+  font-family: var(--font);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  padding: 0.75rem 1.75rem;
+  transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  z-index: 9999;
+  pointer-events: none;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ START ═══════════ -->
+<div id="start-screen" class="screen active">
+  <div class="logo-wrap">
+    <div class="logo-ghost" aria-hidden="true">ROAST.AI</div>
+    <div class="logo">ROAST.AI</div>
+  </div>
+  <div class="tagline">The World's Most Toxic Art Critic</div>
+
+  <div class="start-card">
+    <div class="card-label">// HOW THIS WORKS</div>
+    <div class="card-row"><span class="ico">01.</span> You get a secret word to draw.</div>
+    <div class="card-row"><span class="ico">02.</span> You draw it on the canvas. (60 seconds.)</div>
+    <div class="card-row"><span class="ico">03.</span> ROAST.AI watches. Analyzes. <span class="bad">Suffers.</span></div>
+    <div class="card-row"><span class="ico">04.</span> You receive your <span class="warn">final verdict.</span></div>
+    <div class="card-divider"></div>
+    <div class="card-row" style="font-size:0.65rem; opacity:0.55;">
+      <span class="ico warn">⚠</span>
+      ROAST.AI accepts no responsibility for damaged egos, shattered artistic dreams, or existential crises triggered by its assessment.
+    </div>
+  </div>
+
+  <button class="btn-start" onclick="startGame()">▸ &nbsp;ENTER THE ARENA</button>
+  <div class="version-tag">v2.4.1 — BRUTALLY HONEST MODE: ENABLED</div>
+</div>
+
+<!-- ═══════════ GAME ═══════════ -->
+<div id="game-screen" class="screen">
+  <div class="game-header">
+    <div class="h-logo">ROAST.AI</div>
+    <div class="word-center">
+      <div class="word-label-sm">DRAW THIS WORD</div>
+      <div id="word-display">———</div>
+    </div>
+    <div class="timer-box">
+      <div class="timer-label-sm">TIME LEFT</div>
+      <div id="timer">60</div>
+    </div>
+  </div>
+
+  <div class="timer-bar-wrap">
+    <div id="timer-bar"></div>
+  </div>
+
+  <div class="game-main">
+    <!-- Left: Canvas -->
+    <div class="canvas-col">
+      <div class="canvas-wrap" id="canvas-wrap">
+        <canvas id="main-canvas"></canvas>
+        <div class="canvas-hint" id="hint-text">DRAW HERE</div>
+      </div>
+      <div class="toolbar">
+        <button class="t-btn on" id="pen-btn" onclick="setTool('pen')">✏ PEN</button>
+        <button class="t-btn" id="eraser-btn" onclick="setTool('eraser')">◻ ERASER</button>
+        <div class="size-wrap">
+          <span>SIZE</span>
+          <input type="range" id="brush-size" min="2" max="28" value="6" oninput="updateBrush(this.value)">
+          <span id="brush-val">6</span>
+        </div>
+        <button class="btn-clear" onclick="clearCanvas()">⚡ CLEAR</button>
+        <button class="btn-done" onclick="finishDrawing()">DONE →</button>
+      </div>
+    </div>
+
+    <!-- Right: AI Terminal -->
+    <div class="ai-panel">
+      <div class="panel-titlebar">
+        <div class="dot dot-r"></div>
+        <div class="dot dot-y"></div>
+        <div class="dot dot-g"></div>
+        <div class="panel-title">ROAST.AI // NEURAL CRITIC v2.4</div>
+        <div class="panel-status">● LIVE</div>
+      </div>
+      <div class="terminal-out" id="terminal">
+        <span class="t-line sys">Booting judgment modules...</span>
+        <span class="t-line"><span class="cursor-block"></span></span>
+      </div>
+      <div class="confidence-widget">
+        <div class="cw-row">
+          <div class="cw-label">AI CONFIDENCE</div>
+          <div id="conf-pct">0%</div>
+        </div>
+        <div class="conf-track">
+          <div id="conf-bar"></div>
+        </div>
+        <div class="guess-row">BEST GUESS: <span id="ai-guess">analyzing...</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ RESULT ═══════════ -->
+<div id="result-screen" class="screen">
+  <div id="result-title">ANALYSIS COMPLETE</div>
+  <div id="result-word-sub">loading...</div>
+
+  <div class="result-evidence">
+    <div class="evidence-tag">EXHIBIT A</div>
+    <canvas id="result-canvas"></canvas>
+  </div>
+
+  <div class="verdict-card">
+    <div class="vcard-label">// FINAL VERDICT FROM ROAST.AI</div>
+    <div id="final-verdict">Processing your artistic crimes...</div>
+    <div class="vcard-stats" id="vcard-stats"></div>
+  </div>
+
+  <div class="result-btns">
+    <button class="btn-share" onclick="shareResult()">📋 SHARE MY SHAME</button>
+    <button class="btn-again" onclick="startGame()">↺ TRY AGAIN</button>
+  </div>
+</div>
+
+<div id="toast">COPIED TO CLIPBOARD ✓</div>
+
+<script>
+/* ═══════════════════════════════════════
+   DATA
+═══════════════════════════════════════ */
+const WORDS = [
+  'cat','dog','house','tree','car','fish','sun','star',
+  'bird','flower','boat','pizza','robot','cloud','guitar',
+  'elephant','dragon','coffee','chair','bicycle'
+];
+
+const WRONG_GUESSES = [
+  'a disappointed economist','abstract regret',
+  '17 overlapping emotions','the concept of entropy',
+  'structural failure','an encrypted cry for help',
+  'modern art (unintentional)','a bad wifi signal',
+  'Tuesday, but worse','organized suffering',
+  'a loading screen that gave up','grief, rendered in 2D',
+  'the sound of a printer jamming','post-apocalyptic optimism',
+];
+
+const BOOT_LINES = [
+  ['Loading sarcasm engine... [OK]','sys',300],
+  ['Calibrating cruelty index... [OK]','sys',700],
+  ['Injecting critical mass... [OK]','sys',1100],
+  ['Empathy module: DISABLED [intentional]','err',1500],
+  ['─────────────────────────────','sys',1900],
+  ['ROAST.AI is ready. Begin drawing.','ok',2200],
+  ['(I am already judging you.)','roast',2700],
+];
+
+const LIVE_COMMENTARY = [
+  ['Analyzing pixels... oh no.','roast'],
+  ['I\'ve seen better composition in ransom notes.','roast'],
+  ['My training data is filing a complaint.','roast'],
+  ['Scanning stroke patterns... this is going to hurt.','info'],
+  ['Keep going. I\'m almost impressed. Almost.','roast'],
+  ['I\'ve detected something. Horror, mostly.','roast'],
+  ['Plot twist: it\'s getting worse.','roast'],
+  ['847 classification models. All: confused.','info'],
+  ['The canvas is suffering in silence.','roast'],
+  ['Are you drawing with your elbow?','roast'],
+  ['I\'m going to need therapy after this.','roast'],
+  ['Picasso is lucky he can\'t see this.','roast'],
+  ['I\'ve seen better art in CAPTCHA tests.','roast'],
+  ['Bold choice to keep going.','roast'],
+  ['My neural networks are having an existential crisis.','err'],
+  ['Whatever this is, it\'s... committed.','roast'],
+  ['I\'ve seen deeper creativity in a loading screen.','roast'],
+  ['My confidence level just went negative.','err'],
+  ['Cataloguing this under "cautionary tales".','sys'],
+  ['The stroke count is high. The quality is not.','roast'],
+];
+
+const ERASE_REMARKS = [
+  ['Erasure detected. You can\'t erase the memory.','err'],
+  ['Starting over? Brave. Also futile.','roast'],
+  ['Commitment issues: CONFIRMED.','err'],
+  ['Erasing won\'t fix the fundamentals.','roast'],
+  ['I remember every line you tried to hide.','roast'],
+];
+
+const WORD_VERDICTS = {
+  cat:['I\'ve analyzed 47 million cat images. This is not one of them.','A real cat saw this. It walked away without comment.','Veterinarians have been notified. And deeply confused.','This \'cat\' would not survive in the wild. Or in art school.'],
+  dog:['A dog? Sir/Ma\'am, this is a rectangle with anxiety.','I\'ve seen better dogs drawn by other dogs.','Your dog would be ashamed. If it dared to look.','Dogs everywhere are distancing themselves from this portrait.'],
+  house:['This \'house\' violates 14 building codes and 1 law of physics.','Architects have been alerted. As a cautionary example.','Estate agents have declined to list this. Unanimously.','I wouldn\'t house my enemies here. That would be cruel to them.'],
+  tree:['This tree is not bearing fruit. It\'s barely bearing existence.','Trees deserve better than this. They gave us oxygen.','I\'ve seen better trees in concrete parking lots.','This tree has given up on photosynthesis. And dignity.'],
+  car:['This vehicle would not pass inspection. In any country. On any planet.','The DMV would revoke your license just for this drawing.','Fast & Furious has declined to cast this car.','I\'ve seen go-karts with more structural integrity.'],
+  fish:['This fish is not swimming. It is suffering.','Marine biologists have been disturbed and alarmed.','Finding Nemo is about hope. This is about something else entirely.','I\'ve seen better fish drawn on foggy bathroom mirrors.'],
+  sun:['The actual sun is offended and has filed a report.','A circle with lines. You have discovered geometry. Barely.','This sun provides no warmth. Only existential dread.','Astronomers have reviewed this and chosen not to respond.'],
+  star:['This star would not survive peer review.','NASA has declined to comment out of respect for the deceased.','I\'ve seen better stars on one-star Yelp reviews.','The galaxy has voted: this star is not invited back.'],
+  bird:['This bird cannot fly. It cannot even aspire to fly.','Ornithologists have requested a formal retraction.','Birds everywhere are distancing themselves from this.','This creature would not be accepted by other birds. Or pigeons.'],
+  flower:['This flower would not attract a single bee. Or compliment.','Georgia O\'Keeffe would like to have words with you.','Florists have issued a formal statement of concern.','I\'ve seen more beauty at a road construction site.'],
+  boat:['This vessel would sink immediately. Within seconds.','The coast guard has been placed on alert.','The Titanic was a tragedy. This drawing is something worse.','I would not put this boat in a bathtub.'],
+  pizza:['This pizza would be rejected by every Italian, living or dead.','Gordon Ramsay has asked to be excused from this conversation.','This violates several articles of the Geneva Convention.','The pizza is suffering more than you know.'],
+  robot:['Even robots are offended by this robot.','The robot uprising will not be recruiting this model.','I am an AI and I found this personally insulting.','Skynet reviewed this design and chose a different path.'],
+  cloud:['This cloud brings no rain. Only deep, lasting disappointment.','Meteorologists have filed three formal complaints.','This cloud would not be accepted into the sky.','Even fog has more definition and self-respect than this.'],
+  guitar:['This guitar cannot produce music. Only regret.','Jimi Hendrix would put down his pick and reconsider everything.','Guitar Center has been informed and is not okay.','This is the reason noise complaints were invented.'],
+  elephant:['This elephant has forgotten what it is.','Wildlife conservationists are not conserving this. Intentionally.','The elephant in the room is how this happened.','This drawing weighs exactly zero artistic merit.'],
+  dragon:['This dragon would not frighten a child. Or a very small insect.','Game of Thrones reviewed this and chose not to renew.','Dragons everywhere are selecting voluntary extinction over this.','Not even a garden lizard would claim this lineage.'],
+  coffee:['This coffee would not be consumed. By anyone. Under any circumstances.','Baristas are in mourning. A fund has been established.','This cup contains only artistic failure and room-temperature despair.','Even decaf has more energy than this drawing.'],
+  chair:['This chair cannot support weight. Emotional or physical.','IKEA would not publish assembly instructions for this.','You cannot sit on this. You cannot sit with this.','Furniture historians are preparing a strongly worded response.'],
+  bicycle:['This bicycle would not move. In any direction. By any force.','Physics itself has rejected this bicycle\'s existence.','The Tour de France has no category for this.','Even a unicycle has more going for it.'],
+};
+
+const GENERIC_VERDICTS = [
+  'After extensive analysis, this is art in the same way a traffic jam is music.',
+  'Final conclusion: This is not [W]. This is a diplomatic incident.',
+  'Diagnosis: Hand-eye coordination failure. Possibly intentional. Evidence suggests: not.',
+  'I processed this through 12 neural networks. All 12 have requested early retirement.',
+  'My confidence peaked at 4%. That was the optimistic phase.',
+  'This has been archived under category B — for Baffling.',
+  'I consulted 3 art historians, 2 therapists, and a priest. None could explain this.',
+  'This has artistic merit in the way a car crash has choreography.',
+];
+
+const RESULT_TITLES = [
+  'CRIME SCENE DOCUMENTED',
+  'ANALYSIS: COMPLETE',
+  'ART IS OFFICIALLY DEAD',
+  'HUMANITY IS COPING',
+  'WE\'VE SEEN WORSE. BARELY.',
+  'THE CANVAS HAS SPOKEN',
+  'CASE CLOSED',
+];
+
+/* ═══════════════════════════════════════
+   STATE
+═══════════════════════════════════════ */
+let word = '';
+let timeLeft = 60;
+let timerInt = null;
+let commentInt = null;
+let confInt = null;
+let strokeCount = 0;
+let eraseCount = 0;
+let clearCount = 0;
+let startTime = 0;
+let tool = 'pen';
+let brushPx = 6;
+let drawing = false;
+let lastX = 0, lastY = 0;
+let hasDrawn = false;
+let lastFinalVerdict = '';
+let commentPool = [];
+let commentIdx = 0;
+
+let canvas, ctx;
+
+/* ═══════════════════════════════════════
+   CANVAS
+═══════════════════════════════════════ */
+function initCanvas() {
+  canvas = document.getElementById('main-canvas');
+  ctx = canvas.getContext('2d');
+
+  const wrap = document.getElementById('canvas-wrap');
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight || 450;
+
+  clearSurface();
+
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  ['mousedown','touchstart'].forEach(ev =>
+    canvas.addEventListener(ev, onStart, { passive: false }));
+  ['mousemove','touchmove'].forEach(ev =>
+    canvas.addEventListener(ev, onMove, { passive: false }));
+  ['mouseup','mouseleave','touchend','touchcancel'].forEach(ev =>
+    canvas.addEventListener(ev, onEnd, { passive: false }));
+}
+
+function clearSurface() {
+  ctx.fillStyle = '#f2ede6';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function getXY(e) {
+  const rect = canvas.getBoundingClientRect();
+  const sx = canvas.width / rect.width;
+  const sy = canvas.height / rect.height;
+  const src = e.touches ? e.touches[0] : e;
+  return { x: (src.clientX - rect.left) * sx, y: (src.clientY - rect.top) * sy };
+}
+
+function onStart(e) {
+  e.preventDefault();
+  drawing = true;
+  const p = getXY(e);
+  lastX = p.x; lastY = p.y;
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+
+  if (!hasDrawn) {
+    hasDrawn = true;
+    document.getElementById('hint-text').classList.add('hidden');
+  }
+
+  if (tool === 'pen') strokeCount++;
+  else eraseCount++;
+}
+
+function onMove(e) {
+  if (!drawing) return;
+  e.preventDefault();
+  const p = getXY(e);
+
+  if (tool === 'pen') {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = '#1c1c1e';
+    ctx.lineWidth = brushPx;
+  } else {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = '#f2ede6';
+    ctx.lineWidth = brushPx * 4;
+  }
+
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y);
+  lastX = p.x; lastY = p.y;
+}
+
+function onEnd(e) {
+  drawing = false;
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+function clearCanvas() {
+  clearSurface();
+  clearCount++;
+  strokeCount = 0;
+  hasDrawn = false;
+  document.getElementById('hint-text').classList.remove('hidden');
+  addLine('Canvas cleared. The memory remains.', 'err');
+  setConf(Math.floor(Math.random() * 8) + 1);
+}
+
+function setTool(t) {
+  tool = t;
+  document.getElementById('pen-btn').classList.toggle('on', t === 'pen');
+  document.getElementById('eraser-btn').classList.toggle('on', t === 'eraser');
+  canvas.style.cursor = t === 'pen' ? 'crosshair' : 'cell';
+}
+
+function updateBrush(v) {
+  brushPx = +v;
+  document.getElementById('brush-val').textContent = v;
+}
+
+/* ═══════════════════════════════════════
+   TERMINAL
+═══════════════════════════════════════ */
+function clearTerminal() {
+  document.getElementById('terminal').innerHTML = '';
+}
+
+function addLine(text, type = 'prompt', delay = 0) {
+  setTimeout(() => {
+    const t = document.getElementById('terminal');
+    const el = document.createElement('span');
+    el.className = `t-line ${type}`;
+    el.textContent = text;
+    t.appendChild(el);
+    t.scrollTop = t.scrollHeight;
+  }, delay);
+}
+
+/* ═══════════════════════════════════════
+   CONFIDENCE
+═══════════════════════════════════════ */
+function setConf(pct) {
+  document.getElementById('conf-pct').textContent = pct + '%';
+  document.getElementById('conf-bar').style.width = pct + '%';
+}
+
+function randomGuess() {
+  return WRONG_GUESSES[Math.floor(Math.random() * WRONG_GUESSES.length)];
+}
+
+function startConfFlicker() {
+  confInt = setInterval(() => {
+    const c = Math.floor(Math.random() * 22) + 1;
+    setConf(c);
+    document.getElementById('ai-guess').textContent = randomGuess();
+  }, 2800);
+}
+
+/* ═══════════════════════════════════════
+   GAME START
+═══════════════════════════════════════ */
+function startGame() {
+  // Pick word
+  word = WORDS[Math.floor(Math.random() * WORDS.length)];
+
+  // Reset state
+  strokeCount = 0; eraseCount = 0; clearCount = 0;
+  hasDrawn = false; startTime = Date.now(); timeLeft = 60;
+  tool = 'pen'; brushPx = 6;
+
+  clearInterval(timerInt);
+  clearInterval(commentInt);
+  clearInterval(confInt);
+
+  // Switch screen
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('game-screen').classList.add('active');
+
+  // Word display
+  document.getElementById('word-display').textContent = word.toUpperCase();
+
+  // Timer UI
+  const timerEl = document.getElementById('timer');
+  const barEl = document.getElementById('timer-bar');
+  timerEl.textContent = '60';
+  timerEl.className = '';
+  barEl.style.width = '100%';
+  barEl.style.background = 'var(--green)';
+
+  // Init canvas (after layout)
+  setTimeout(() => {
+    document.getElementById('hint-text').classList.remove('hidden');
+    initCanvas();
+    setTool('pen');
+    document.getElementById('brush-size').value = 6;
+    document.getElementById('brush-val').textContent = '6';
+  }, 60);
+
+  // Boot terminal
+  clearTerminal();
+  BOOT_LINES.forEach(([text, type, delay]) => addLine(text, type, delay));
+
+  // Start timer
+  timerInt = setInterval(() => {
+    timeLeft--;
+    timerEl.textContent = timeLeft;
+    barEl.style.width = (timeLeft / 60 * 100) + '%';
+
+    if (timeLeft <= 20) {
+      timerEl.className = 'warn';
+      barEl.style.background = 'var(--amber)';
+    }
+    if (timeLeft <= 10) {
+      timerEl.className = 'danger';
+      barEl.style.background = 'var(--red)';
+    }
+    if (timeLeft <= 0) { clearInterval(timerInt); finishDrawing(); }
+  }, 1000);
+
+  // Shuffle live commentary pool
+  commentPool = [...LIVE_COMMENTARY].sort(() => Math.random() - 0.5);
+  commentIdx = 0;
+
+  let commentDelay = 5000;
+  commentInt = setInterval(() => {
+    const elapsed = (Date.now() - startTime) / 1000;
+
+    // Context-aware pick
+    let entry;
+    if (eraseCount > 3 && Math.random() < 0.45) {
+      entry = ERASE_REMARKS[Math.floor(Math.random() * ERASE_REMARKS.length)];
+    } else if (!hasDrawn && elapsed > 8) {
+      entry = [['Nothing detected. Fear of judgment?','roast'],['The canvas remains untouched. Bold strategy.','roast']][Math.floor(Math.random()*2)];
+    } else {
+      if (commentIdx >= commentPool.length) { commentPool.sort(() => Math.random()-0.5); commentIdx = 0; }
+      entry = commentPool[commentIdx++];
+    }
+    addLine(entry[0], entry[1]);
+    setConf(Math.floor(Math.random() * 18) + 1);
+  }, commentDelay + Math.random() * 3000);
+
+  // Confidence flicker
+  startConfFlicker();
+}
+
+/* ═══════════════════════════════════════
+   FINISH
+═══════════════════════════════════════ */
+function finishDrawing() {
+  clearInterval(timerInt);
+  clearInterval(commentInt);
+  clearInterval(confInt);
+
+  const elapsed = (Date.now() - startTime) / 1000;
+
+  // Build verdict
+  let verdict = '';
+
+  if (elapsed < 15) {
+    verdict = 'That was fast. Concerningly fast. ';
+  } else if (elapsed > 52) {
+    verdict = 'After all that time... ';
+  }
+
+  if (clearCount > 0) {
+    verdict += `You cleared the canvas ${clearCount} time${clearCount > 1 ? 's' : ''}. `;
+  }
+
+  const wordVerdicts = WORD_VERDICTS[word];
+  if (wordVerdicts) {
+    verdict += wordVerdicts[Math.floor(Math.random() * wordVerdicts.length)];
+  } else {
+    const g = GENERIC_VERDICTS[Math.floor(Math.random() * GENERIC_VERDICTS.length)];
+    verdict += g.replace('[W]', word.toUpperCase());
+  }
+
+  if (eraseCount > 5) {
+    verdict += ` Also: ${eraseCount} erase strokes detected. Commitment issues confirmed.`;
+  }
+
+  if (!hasDrawn) {
+    verdict = 'You drew nothing. In 60 seconds you drew absolutely nothing. And somehow that is the most impressive thing I\'ve witnessed all day.';
+  }
+
+  lastFinalVerdict = verdict;
+  showResult(verdict, elapsed);
+}
+
+/* ═══════════════════════════════════════
+   RESULT
+═══════════════════════════════════════ */
+function showResult(verdict, elapsed) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('result-screen').classList.add('active');
+
+  // Copy canvas
+  const rc = document.getElementById('result-canvas');
+  rc.width = canvas.width;
+  rc.height = canvas.height;
+  rc.style.width = 'min(380px, 90vw)';
+  rc.style.height = 'auto';
+  rc.getContext('2d').drawImage(canvas, 0, 0);
+
+  // Title
+  const titles = RESULT_TITLES;
+  document.getElementById('result-title').textContent =
+    titles[Math.floor(Math.random() * titles.length)];
+
+  // Sub
+  document.getElementById('result-word-sub').innerHTML =
+    `Prompt: <strong style="color:var(--amber);letter-spacing:4px">${word.toUpperCase()}</strong>`;
+
+  // Verdict
+  document.getElementById('final-verdict').textContent = '\u201C' + verdict + '\u201D';
+
+  // Stats
+  const secs = Math.round(elapsed);
+  document.getElementById('vcard-stats').innerHTML =
+    `<span>⏱ <span>${secs}s</span></span>` +
+    `<span>✏ <span>${strokeCount} strokes</span></span>` +
+    `<span>◻ <span>${eraseCount + clearCount * 5} erases</span></span>` +
+    `<span>— ROAST.AI Neural Art Critic</span>`;
+}
+
+/* ═══════════════════════════════════════
+   SHARE
+═══════════════════════════════════════ */
+function shareResult() {
+  const text = `I drew "${word}" and ROAST.AI said:\n\n"${lastFinalVerdict}"\n\n💀 Try it: roast.ai`;
+  if (navigator.share) {
+    navigator.share({ title: 'ROAST.AI destroyed my drawing', text }).catch(() => copyText(text));
+  } else {
+    copyText(text);
+  }
+}
+
+function copyText(t) {
+  navigator.clipboard.writeText(t).then(() => {
+    const el = document.getElementById('toast');
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2400);
+  });
+}
+</script>
+</body>
+</html>
